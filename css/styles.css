@@ -1,0 +1,45 @@
+/* Додаткові стилі для покращення вигляду */
+body {
+    background-color: #f8f9fa;
+    font-family: 'Arial', sans-serif;
+}
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.card {
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.btn-primary {
+    background-color: #4CAF50;
+    border: none;
+}
+
+.btn-primary:hover {
+    background-color: #45a049;
+}
+
+.alert-info {
+    background-color: #d1ecf1;
+    border-color: #bee5eb;
+    color: #0c5460;
+}
+
+/* Стилі для адмін-панелі */
+#adviceList .card {
+    margin-bottom: 10px;
+}
+
+#adviceList .card-body {
+    padding: 10px;
+}
+
+#adviceList .btn-sm {
+    margin-right: 5px;
+}

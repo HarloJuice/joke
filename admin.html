@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Адмін-панель</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <!-- Підключення Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Підключення Bootstrap JS (разом з Popper.js) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="text-center">Адмін-панель</h1>
+        <div class="card mt-4">
+            <div class="card-body">
+                <form id="addAdviceForm">
+                    <input type="text" id="topic" class="form-control mb-3" placeholder="Тема" required>
+                    <textarea id="advice" class="form-control mb-3" placeholder="Порада" required></textarea>
+                    <button type="submit" class="btn btn-primary w-100">Додати пораду</button>
+                </form>
+
+                <div class="mt-4">
+                    <h4>Список порад:</h4>
+                    <div id="adviceList"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальне вікно для редагування -->
+    <div id="editModal" class="modal fade" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Редагувати пораду</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editAdviceForm">
+                        <input type="hidden" id="editId">
+                        <input type="text" id="editTopic" class="form-control mb-3" placeholder="Тема" required>
+                        <textarea id="editAdvice" class="form-control mb-3" placeholder="Порада" required></textarea>
+                        <button type="submit" class="btn btn-primary w-100">Зберегти</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/scripts.js"></script>
+    <script>
+        // Функція для завантаження списку порад
+        function loadAdvices() {
+            fetch('api.php?action=getAll')
+                .then(response => response.json())
+                .then(data => {
+                    const adviceList = document.getElementById("adviceList");
+                    adviceList.innerHTML = "";
+                    data.forEach(advice => {
+                        const adviceItem = document.createElement("div");
+                        adviceItem.className = "card mb-3";
+                        adviceItem.innerHTML = `
+                            <div class="card-body">
+                                <h5 class="card-title">${advice.topic}</h5>
+                                <p class="card-text">${advice.advice}</p>
+                                <button class="btn btn-warning btn-sm" onclick="editAdvice(${advice.id})">Редагувати</button>
+                                <button class="btn btn-danger btn-sm" onclick="deleteAdvice(${advice.id})">Видалити</button>
+                            </div>
+                        `;
+                        adviceList.appendChild(adviceItem);
+                    });
+                });
+        }
+
+        // Функція для додавання поради
+        document.getElementById("addAdviceForm").addEventListener("submit", function (e) {
+            e.preventDefault();
+            const topic = document.getElementById("topic").value;
+            const advice = document.getElementById("advice").value;
+
+            fetch('api.php?action=add', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem("token")}`
+                },
+                body: JSON.stringify({ topic, advice })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    loadAdvices();
+                    document.getElementById("addAdviceForm").reset();
+                }
+            });
+        });
+
+        // Функція для видалення поради
+        function deleteAdvice(id) {
+            fetch(`api.php?action=delete&id=${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem("token")}`
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    loadAdvices();
+                }
+            });
+        }
+
+        // Завантажуємо поради при завантаженні сторінки
+        loadAdvices();
+    </script>
+</body>
+</html>
