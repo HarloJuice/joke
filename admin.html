@@ -6,23 +6,30 @@
     <title>Адмін-панель</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
-    <!-- Підключення Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-
-    <!-- Підключення Bootstrap JS (разом з Popper.js) -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </head>
 <body>
     <div class="container mt-5">
         <h1 class="text-center">Адмін-панель</h1>
         <div class="card mt-4">
             <div class="card-body">
+                <!-- Форма для додавання нової поради -->
                 <form id="addAdviceForm">
-                    <input type="text" id="topic" class="form-control mb-3" placeholder="Тема" required>
+                    <select id="category" class="form-control mb-3" required>
+                        <option value="">Оберіть категорію</option>
+                    </select>
                     <textarea id="advice" class="form-control mb-3" placeholder="Порада" required></textarea>
                     <button type="submit" class="btn btn-primary w-100">Додати пораду</button>
                 </form>
 
+                <!-- Фільтр за категоріями -->
+                <div class="mt-4">
+                    <h4>Фільтр за категоріями:</h4>
+                    <select id="categoryFilter" class="form-control mb-3" onchange="loadAdvices()">
+                        <option value="">Всі категорії</option>
+                    </select>
+                </div>
+
+                <!-- Список порад -->
                 <div class="mt-4">
                     <h4>Список порад:</h4>
                     <div id="adviceList"></div>
@@ -42,7 +49,9 @@
                 <div class="modal-body">
                     <form id="editAdviceForm">
                         <input type="hidden" id="editId">
-                        <input type="text" id="editTopic" class="form-control mb-3" placeholder="Тема" required>
+                        <select id="editCategory" class="form-control mb-3" required>
+                            <option value="">Оберіть категорію</option>
+                        </select>
                         <textarea id="editAdvice" class="form-control mb-3" placeholder="Порада" required></textarea>
                         <button type="submit" class="btn btn-primary w-100">Зберегти</button>
                     </form>
@@ -53,9 +62,38 @@
 
     <script src="js/scripts.js"></script>
     <script>
-        // Функція для завантаження списку порад
+        // Функція для завантаження категорій
+        function loadCategories() {
+            fetch('api.php?action=getCategories')
+                .then(response => response.json())
+                .then(data => {
+                    const categorySelect = document.getElementById("category");
+                    const categoryFilter = document.getElementById("categoryFilter");
+                    const editCategorySelect = document.getElementById("editCategory");
+
+                    // Очищаємо списки
+                    categorySelect.innerHTML = '<option value="">Оберіть категорію</option>';
+                    categoryFilter.innerHTML = '<option value="">Всі категорії</option>';
+                    editCategorySelect.innerHTML = '<option value="">Оберіть категорію</option>';
+
+                    // Заповнюємо списки категоріями
+                    data.forEach(category => {
+                        const option = document.createElement("option");
+                        option.value = category.id;
+                        option.textContent = category.name;
+                        categorySelect.appendChild(option.cloneNode(true));
+                        categoryFilter.appendChild(option.cloneNode(true));
+                        editCategorySelect.appendChild(option.cloneNode(true));
+                    });
+                });
+        }
+
+        // Функція для завантаження порад з фільтрацією
         function loadAdvices() {
-            fetch('api.php?action=getAll')
+            const categoryId = document.getElementById("categoryFilter").value;
+            const url = categoryId ? `api.php?action=getAll&category_id=${categoryId}` : 'api.php?action=getAll';
+
+            fetch(url)
                 .then(response => response.json())
                 .then(data => {
                     const adviceList = document.getElementById("adviceList");
@@ -65,7 +103,7 @@
                         adviceItem.className = "card mb-3";
                         adviceItem.innerHTML = `
                             <div class="card-body">
-                                <h5 class="card-title">${advice.topic}</h5>
+                                <h5 class="card-title">${advice.category}</h5>
                                 <p class="card-text">${advice.advice}</p>
                                 <button class="btn btn-warning btn-sm" onclick="editAdvice(${advice.id})">Редагувати</button>
                                 <button class="btn btn-danger btn-sm" onclick="deleteAdvice(${advice.id})">Видалити</button>
@@ -76,10 +114,32 @@
                 });
         }
 
+        // Функція для редагування поради
+        function editAdvice(id) {
+            fetch(`api.php?action=getOne&id=${id}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.id && data.category_id && data.advice) {
+                        document.getElementById("editId").value = data.id;
+                        document.getElementById("editCategory").value = data.category_id;
+                        document.getElementById("editAdvice").value = data.advice;
+
+                        // Відкриваємо модальне вікно
+                        const editModal = new bootstrap.Modal(document.getElementById('editModal'));
+                        editModal.show();
+                    } else {
+                        console.error("Дані не отримано або вони неповні:", data);
+                    }
+                })
+                .catch(error => {
+                    console.error("Помилка при отриманні даних:", error);
+                });
+        }
+
         // Функція для додавання поради
         document.getElementById("addAdviceForm").addEventListener("submit", function (e) {
             e.preventDefault();
-            const topic = document.getElementById("topic").value;
+            const categoryId = document.getElementById("category").value;
             const advice = document.getElementById("advice").value;
 
             fetch('api.php?action=add', {
@@ -88,13 +148,37 @@
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${localStorage.getItem("token")}`
                 },
-                body: JSON.stringify({ topic, advice })
+                body: JSON.stringify({ category_id: categoryId, advice })
             })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
                     loadAdvices();
                     document.getElementById("addAdviceForm").reset();
+                }
+            });
+        });
+
+        // Функція для збереження змін при редагуванні
+        document.getElementById("editAdviceForm").addEventListener("submit", function (e) {
+            e.preventDefault();
+            const id = document.getElementById("editId").value;
+            const categoryId = document.getElementById("editCategory").value;
+            const advice = document.getElementById("editAdvice").value;
+
+            fetch('api.php?action=edit', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem("token")}`
+                },
+                body: JSON.stringify({ id, category_id: categoryId, advice })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    loadAdvices();
+                    bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
                 }
             });
         });
@@ -115,7 +199,8 @@
             });
         }
 
-        // Завантажуємо поради при завантаженні сторінки
+        // Завантажуємо категорії та поради при завантаженні сторінки
+        loadCategories();
         loadAdvices();
     </script>
 </body>
