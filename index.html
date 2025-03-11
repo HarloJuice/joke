@@ -12,16 +12,23 @@
         <h1 class="text-center">Порадник від психолога з гумором</h1>
         <div class="card mt-4">
             <div class="card-body">
-                <p class="text-center">Оберіть тему, яка вас цікавить:</p>
-                <div class="d-grid gap-2">
-                    <button class="btn btn-primary" onclick="getAdvice('тривожність')">Тривожність</button>
-                    <button class="btn btn-primary" onclick="getAdvice('сон')">Сон</button>
-                    <button class="btn btn-primary" onclick="getAdvice('апетит')">Апетит</button>
-                    <button class="btn btn-primary" onclick="getAdvice('відволікання')">Відволікання</button>
+                <!-- Вибір категорії -->
+                <div class="mb-4">
+                    <label for="categorySelect" class="form-label">Оберіть категорію:</label>
+                    <select id="categorySelect" class="form-control">
+                        <option value="">Всі категорії</option>
+                    </select>
                 </div>
+
+                <!-- Кнопка для отримання поради -->
+                <button class="btn btn-primary w-100" onclick="getAdvice()">Отримати пораду</button>
+
+                <!-- Відображення поради -->
                 <div class="mt-4">
                     <h4>Ваша порада:</h4>
-                    <p id="advice" class="alert alert-info"></p>
+                    <div id="adviceContainer" class="fade-in">
+                        <p id="advice" class="alert alert-info"></p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -29,21 +36,64 @@
 
     <script src="js/scripts.js"></script>
     <script>
-        function getAdvice(topic) {
-            fetch(`api.php?topic=${topic}`)
+        // Функція для завантаження категорій
+        function loadCategories() {
+            fetch('api.php?action=getCategories')
                 .then(response => response.json())
                 .then(data => {
-                    if (data.advice) {
-                        document.getElementById("advice").innerText = data.advice;
+                    const categorySelect = document.getElementById("categorySelect");
+
+                    // Очищаємо список
+                    categorySelect.innerHTML = '<option value="">Всі категорії</option>';
+
+                    // Заповнюємо список категоріями
+                    data.forEach(category => {
+                        const option = document.createElement("option");
+                        option.value = category.id;
+                        option.textContent = category.name;
+                        categorySelect.appendChild(option);
+                    });
+                });
+        }
+
+        // Функція для отримання поради
+        function getAdvice() {
+            const categoryId = document.getElementById("categorySelect").value;
+            const url = categoryId ? `api.php?action=getAll&category_id=${categoryId}` : 'api.php?action=getAll';
+
+            // Приховуємо пораду перед завантаженням нової
+            const adviceContainer = document.getElementById("adviceContainer");
+            adviceContainer.classList.remove("fade-in");
+            adviceContainer.classList.add("fade-out");
+
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.length > 0) {
+                        const randomAdvice = data[Math.floor(Math.random() * data.length)];
+
+                        // Показуємо нову пораду з анімацією
+                        setTimeout(() => {
+                            document.getElementById("advice").innerText = randomAdvice.advice;
+                            adviceContainer.classList.remove("fade-out");
+                            adviceContainer.classList.add("fade-in");
+                        }, 300); // Затримка для завершення анімації fade-out
                     } else {
-                        document.getElementById("advice").innerText = data.error || "Щось пішло не так :(";
+                        document.getElementById("advice").innerText = "Порад не знайдено.";
+                        adviceContainer.classList.remove("fade-out");
+                        adviceContainer.classList.add("fade-in");
                     }
                 })
                 .catch(error => {
-                    console.error("Помилка:", error);
+                    console.error("Помилка при отриманні поради:", error);
                     document.getElementById("advice").innerText = "Помилка при отриманні поради.";
+                    adviceContainer.classList.remove("fade-out");
+                    adviceContainer.classList.add("fade-in");
                 });
         }
+
+        // Завантажуємо категорії при завантаженні сторінки
+        loadCategories();
     </script>
 </body>
 </html>
